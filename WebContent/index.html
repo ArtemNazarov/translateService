@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css?family=Indie+Flower');
+        @import url('https://fonts.googleapis.com/css?family=Lato');
+        @import url('https://fonts.googleapis.com/css?family=Roboto');
+        h1 {
+            font-family: 'Indie Flower', cursive;
+        }
+        
+        #formBlock {
+            position: absolute;
+            left: 35%;
+        }
+        
+        #translateButton {
+            padding: 15px 30px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+        }
+        
+        label {
+            font-family: 'Lato', cursive;
+            font-size: 20px;
+        }
+        
+        select {
+            font-family: 'Roboto', cursive;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 align="center">Translate web service</h1>
+    <div id="formBlock">
+        <p>
+            <label for="fromLang">Choose language</label>
+            <select id="fromLangSelector" name="fromLang">
+                <option value="en">English</option>
+                <option value="de">Deutsch</option>
+                <option value="fr">Francais</option>
+                <option value="es">Espanol</option>
+                <option value="it">Italiano</option>
+                <option value="ru">Русский</option>
+                <option value="uk">Украiнська</option>
+            </select>
+        </p>
+        <textarea id="translatableTextArea" name="translateText" cols="65" rows="5" placeholder="Enter words for translate here..."></textarea>
+        <p>
+            <input id="translateButton" type="submit"> </p>
+        <p>
+            <label for="toLang">Choose language</label>
+            <select name="toLang" id="toLangSelector">
+                <option value="en">English</option>
+                <option value="de">Deutsch</option>
+                <option value="fr">Francais</option>
+                <option value="es">Espanol</option>
+                <option value="it">Italiano</option>
+                <option value="ru">Русский</option>
+                <option value="uk">Украiнська</option>
+            </select>
+        </p>
+        <textarea id="translatedTextArea" name="translatedWords" cols="65" rows="5" placeholder="Result"></textarea>
+    </div>
+    <script src="http://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+        function translate() {
+            var fromLangValue = $("#fromLangSelector option:selected").attr("value");
+            var toLangValue = $("#toLangSelector option:selected").attr("value");
+            var translatableTextAreaValue = $("#translatableTextArea").val();
+            var toLangSelectorName = $("#toLangSelector").attr("name");
+            var fromLangSelectorName = $("#fromLangSelector").attr("name");
+            var translatableTextAreaName = $("#translatableTextArea").attr("name");
+            var getURL = "Controller?" + 
+                fromLangSelectorName + "=" + fromLangValue + "&" + 
+                translatableTextAreaName + "=" + translatableTextAreaValue + "&" + 
+                toLangSelectorName + "=" + toLangValue;
+            var xhr = new XMLHttpRequest();
+            
+            xhr.open("GET", getURL);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 4) {
+                    if (xhr.status == 200) {
+                        checkResponse(xhr.responseText);
+                    }
+                    else {
+                        alert(xhr.status + ': ' + xhr.statusText);
+                    }
+                }
+            }
+            xhr.send(null);
+        }
+
+        function checkResponse(resp) {
+            if (resp.indexOf("Error") != -1) {
+                alert(resp);
+            }
+            else {
+                var translation = JSON.parse(resp);
+                var code = translation.code;
+                
+                if (code !== 200) {
+                    alert("Yandex translation error " + code +"! " + translation.message);
+                } else {
+                    $("#translatedTextArea").val(translation.text[0]);
+                }
+            }
+        }
+        $("#translateButton").on("click", translate);
+    </script>
+</body>
+
+</html>
