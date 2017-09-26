@@ -17,6 +17,13 @@
             left: 35%;
         }
         
+        #loggerBlock {
+            position: absolute;
+            top: 13%;
+            left: 1%;
+        }
+        
+        button,
         #translateButton {
             padding: 15px 30px;
             background-color: #4CAF50;
@@ -36,6 +43,14 @@
         select {
             font-family: 'Roboto', cursive;
             font-size: 16px;
+        }
+        
+        #checkLogLabel {
+            font-size: 18px;
+        }
+        
+        #logArea {
+            resize: none;
         }
     </style>
 </head>
@@ -72,51 +87,121 @@
         </p>
         <textarea id="translatedTextArea" name="translatedWords" cols="65" rows="5" placeholder="Result"></textarea>
     </div>
+    <div id="loggerBlock">
+        <label for="checkShowLog" id="checkLogLabel">Show logs table</label>
+        <input type="checkbox" id="checkShowLog">
+        <br>
+        <div id="hiddenBlock" hidden>
+            <p>
+                <textarea id="logArea" cols="50" rows="20" readonly></textarea>
+            </p>
+            <p>
+                <button id="updateLogArea">Update</button>
+            </p>
+        </div>
+    </div>
     <script src="http://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
     <script type="text/javascript">
-        function translate() {
-            var fromLangValue = $("#fromLangSelector option:selected").attr("value");
-            var toLangValue = $("#toLangSelector option:selected").attr("value");
-            var translatableTextAreaValue = $("#translatableTextArea").val();
-            var toLangSelectorName = $("#toLangSelector").attr("name");
-            var fromLangSelectorName = $("#fromLangSelector").attr("name");
-            var translatableTextAreaName = $("#translatableTextArea").attr("name");
-            var getURL = "Controller?" + 
-                fromLangSelectorName + "=" + fromLangValue + "&" + 
-                translatableTextAreaName + "=" + translatableTextAreaValue + "&" + 
-                toLangSelectorName + "=" + toLangValue;
-            var xhr = new XMLHttpRequest();
-            
-            xhr.open("GET", getURL);
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState == 4) {
-                    if (xhr.status == 200) {
-                        checkResponse(xhr.responseText);
-                    }
-                    else {
-                        alert(xhr.status + ': ' + xhr.statusText);
+        var error = false;
+
+        function onGetResponseController(xhr) {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    var resultWord = checkResponse(xhr.responseText);
+                    if (resultWord !== null) {
+                        var currentValueOfArea = $("#translatedTextArea").val();
+                        var nextValue = currentValueOfArea === "" ? resultWord : currentValueOfArea + resultWord;
+                        $("#translatedTextArea").val(nextValue);
                     }
                 }
+                else {
+                    alert(xhr.status + ': ' + xhr.statusText);
+                    error = true;
+                }
             }
+            return onGetResponseController;
+        }
+
+        function onGetResponseLogdata(xhr) {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    var resultLog = xhr.responseText;
+                    $("#logArea").val(resultLog);
+                }
+                else {
+                    alert(xhr.status + ': ' + xhr.statusText);
+                }
+            }
+            return onGetResponseLogdata;
+        }
+
+        function connectWithServer(URL, onGetResponse) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", URL);
+            xhr.onreadystatechange = onGetResponse(xhr);
             xhr.send(null);
         }
 
         function checkResponse(resp) {
-            if (resp.indexOf("Error") != -1) {
+            //Если встретили в начале ответа сервера слово Error
+            if (resp.indexOf("Error") !== -1) {
                 alert(resp);
+                error = true;
             }
             else {
                 var translation = JSON.parse(resp);
                 var code = translation.code;
-                
                 if (code !== 200) {
-                    alert("Yandex translation error " + code +"! " + translation.message);
-                } else {
-                    $("#translatedTextArea").val(translation.text[0]);
+                    alert("Yandex translation error " + code + "! " + translation.message);
+                    error = true;
+                }
+                else {
+                    return translation.text[0];
                 }
             }
         }
-        $("#translateButton").on("click", translate);
+
+        function translate() {
+            var fromLangValue = $("#fromLangSelector option:selected").attr("value");
+            var toLangValue = $("#toLangSelector option:selected").attr("value");
+            var translatableTextAreaValue = $("#translatableTextArea").val();
+            var wordsArray = translatableTextAreaValue.split("([\\s^.,*/$!%&()?]+)");
+            var toLangSelectorName = $("#toLangSelector").attr("name");
+            var fromLangSelectorName = $("#fromLangSelector").attr("name");
+            var translatableTextAreaName = $("#translatableTextArea").attr("name");
+            var getURLWithoutText = "Controller?" + fromLangSelectorName + "=" + fromLangValue + "&" + toLangSelectorName + "=" + toLangValue + "&" + translatableTextAreaName + "=";
+            // Если произошла ошибка при подключении к серверу или работе с сервером яндекса,
+            // включается этот флаг и прерывается цикл перевода всех слов
+            error = false;
+            //Чистим поле переведённого текста
+            $("#translatedTextArea").val("");
+            var counter = 0;
+            while ((!error) && (counter < wordsArray.length)) {
+                var getURL = getURLWithoutText + wordsArray[counter];
+                connectWithServer(getURL, onGetResponseController);
+                counter++;
+            }
+        }
+
+        function getLog() {
+            var URL = "Logdata";
+            connectWithServer(URL, onGetResponseLogdata);
+        }
+
+        function main() {
+            $("#translateButton").on("click", translate);
+//            $("#translateButton").on("click", getLog);
+            $("#updateLogArea").on("click", getLog)
+            $("#checkShowLog").click(function () {
+                if ($(this).is(':checked')) {
+                    $("#hiddenBlock").show("fast");
+                }
+                else {
+                    $("#hiddenBlock").hide("fast");
+                }
+            });
+        }
+        main();
     </script>
 </body>
 
