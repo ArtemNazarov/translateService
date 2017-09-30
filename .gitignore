@@ -14,3 +14,17 @@
 translateService.iml
 /nbproject/private/
 /nbbuild/
+/dist/
+.idea/encodings.xml
+.idea/libraries/h2_1_4_196.xml
+*.xml___jb_tmp___
+*.xml
+*.class
+build/classes/org/temqua/bundles/Strings.properties
+out/production/translateService1/org/temqua/bundles/Strings.properties
+sources.zip
+translateService.7z
+translateService.war
+translateService1.iml
+WebContent/WEB-INF/lib/h2-1.4.196.jar
+WebContent/index.jsp

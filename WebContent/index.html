@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 
 <head>
     <meta charset="UTF-8">
@@ -13,14 +13,13 @@
         }
         
         #formBlock {
-            position: absolute;
+            position: relative;
             left: 35%;
         }
         
         #loggerBlock {
-            position: absolute;
-            top: 13%;
-            left: 1%;
+            position: relative;
+            left: 5%;
         }
         
         button,
@@ -45,12 +44,21 @@
             font-size: 16px;
         }
         
-        #checkLogLabel {
-            font-size: 18px;
-        }
-        
         #logArea {
             resize: none;
+        }
+        
+        #logsTable {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+        
+        #logsTable td {
+            border: 1px solid black;
+        }
+        
+        #logsTable th {
+            border: 1px solid black;
         }
     </style>
 </head>
@@ -67,7 +75,7 @@
                 <option value="es">Espanol</option>
                 <option value="it">Italiano</option>
                 <option value="ru">Русский</option>
-                <option value="uk">Украiнська</option>
+                <option valu    e="uk">Украiнська</option>
             </select>
         </p>
         <textarea id="translatableTextArea" name="translateText" cols="65" rows="5" placeholder="Enter words for translate here..."></textarea>
@@ -86,15 +94,25 @@
             </select>
         </p>
         <textarea id="translatedTextArea" name="translatedWords" cols="65" rows="5" placeholder="Result"></textarea>
-    </div>
-    <div id="loggerBlock">
+        <br>
         <label for="checkShowLog" id="checkLogLabel">Show logs table</label>
-        <input type="checkbox" id="checkShowLog">
+        <input type="checkbox" id="checkShowLog"> </div>
+    <div id="loggerBlock">
         <br>
         <div id="hiddenBlock" hidden>
-            <p>
-                <textarea id="logArea" cols="50" rows="20" readonly></textarea>
-            </p>
+            <table id="logsTable">
+                <th>ID </th>
+                <th>Request Time</th>
+                <th>Response Time</th>
+                <th>To language</th>
+                <th>From language</th>
+                <th>Translating word</th>
+                <th>Yandex response</th>
+                <th>Status Message</th>
+                <th>IP address</th>
+                <th>Session number</th>
+                <th>Session ID</th>
+            </table>
             <p>
                 <button id="updateLogArea">Update</button>
             </p>
@@ -107,6 +125,7 @@
         function onGetResponseController(xhr) {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
+                	//Проверяется содержимое ответа
                     var resultWord = checkResponse(xhr.responseText);
                     if (resultWord !== null) {
                         var currentValueOfArea = $("#translatedTextArea").val();
@@ -119,26 +138,48 @@
                     error = true;
                 }
             }
-            return onGetResponseController;
         }
 
         function onGetResponseLogdata(xhr) {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
                     var resultLog = xhr.responseText;
-                    $("#logArea").val(resultLog);
+                    //Если не получили не пустой ответ
+                    if (resultLog != "") {
+                    	//Считываются данные из таблицы логов, добавляются в массив строк
+                        var rowsArray = resultLog.split("\n");
+                        var length = document.getElementById("logsTable").rows.length;
+                        //Удаляются все строки таблицы, кроме заглавной
+                        if (length > 1) {
+                            for (var index = length - 1; index > 0; index--) {
+                                document.getElementById("logsTable").deleteRow(index);
+                            }
+                        }
+                        //В таблицу логов добавляются полученные данные
+                        for (var index = 0; index < rowsArray.length; index++) {
+                            var colsArray = rowsArray[index].split(";");
+                            //Суммарная строка, которая в итоге добавляется в конец таблицы
+                            var tableRow = "<tr>";
+                            for (var i = 0; i < colsArray.length; i++) {
+                                tableRow = tableRow.concat("<td>" + colsArray[i] + "</td>");
+                            }
+                            tableRow = tableRow.concat("</tr>");
+                            $("#logsTable > tbody:last-child").append(tableRow);
+                        }
+                    }
                 }
                 else {
                     alert(xhr.status + ': ' + xhr.statusText);
                 }
             }
-            return onGetResponseLogdata;
         }
 
         function connectWithServer(URL, onGetResponse) {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", URL);
-            xhr.onreadystatechange = onGetResponse(xhr);
+            xhr.onreadystatechange = function () {
+                onGetResponse(xhr);
+            }
             xhr.send(null);
         }
 
@@ -149,6 +190,7 @@
                 error = true;
             }
             else {
+            	//Если нет ошибок, парсим ответ yandex translate API 
                 var translation = JSON.parse(resp);
                 var code = translation.code;
                 if (code !== 200) {
@@ -156,16 +198,20 @@
                     error = true;
                 }
                 else {
+                	//Поскольку в ответе от сервера, результат перевода содержится в виде массива, вовзращаем первый элемент
                     return translation.text[0];
                 }
             }
         }
 
         function translate() {
+        	//Считываем текущее содержимое селекторов языка и поля ввода текста
             var fromLangValue = $("#fromLangSelector option:selected").attr("value");
             var toLangValue = $("#toLangSelector option:selected").attr("value");
             var translatableTextAreaValue = $("#translatableTextArea").val();
+            //Делим строку ввода на слова
             var wordsArray = translatableTextAreaValue.split("([\\s^.,*/$!%&()?]+)");
+            //Считываем названия селекторов и поля ввода для добавления в строку запроса
             var toLangSelectorName = $("#toLangSelector").attr("name");
             var fromLangSelectorName = $("#fromLangSelector").attr("name");
             var translatableTextAreaName = $("#translatableTextArea").attr("name");
@@ -184,13 +230,13 @@
         }
 
         function getLog() {
-            var URL = "Logdata";
+            var URL = "LogData";
             connectWithServer(URL, onGetResponseLogdata);
         }
 
+        //Главный метод
         function main() {
             $("#translateButton").on("click", translate);
-//            $("#translateButton").on("click", getLog);
             $("#updateLogArea").on("click", getLog)
             $("#checkShowLog").click(function () {
                 if ($(this).is(':checked')) {
